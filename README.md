@@ -1,5 +1,7 @@
 # Cryptocurrency Data Science Tutorial
 
+By Owen Knott and Jake Baldwin
+
 ## Data Collection and Curation
   When beginning a data analysis on anything, the first step is to find some data to work with. Often, data is not available for us to use in perfect form. This means that we must either find a way to get the data from the internet or clean the data to make it useable for ourselves. In our case, there is a database recording valueable information on crypto currencies online. We can simply download this database and use the information for ourselves. The database we used is located at: https://github.com/oknott14/data_host. The data is currently stored in a repository with each coin containing a seperate .csv file. Since seperated data is hard to work with, we must first compile these files into one large table. We will be using sqlite3 and the pandas python library for this project, but any database library will work.
 
@@ -24,6 +26,23 @@ except:
 pytrends = TrendReq(hl='en-us', tz=360)
 ```
 
+    Collecting pytrends
+      Downloading https://files.pythonhosted.org/packages/96/53/a4a74c33bfdbe1740183e00769377352072e64182913562daf9f5e4f1938/pytrends-4.7.3-py3-none-any.whl
+    Requirement already satisfied: pandas>=0.25 in /usr/local/lib/python3.7/dist-packages (from pytrends) (1.1.5)
+    Requirement already satisfied: requests in /usr/local/lib/python3.7/dist-packages (from pytrends) (2.23.0)
+    Requirement already satisfied: lxml in /usr/local/lib/python3.7/dist-packages (from pytrends) (4.2.6)
+    Requirement already satisfied: numpy>=1.15.4 in /usr/local/lib/python3.7/dist-packages (from pandas>=0.25->pytrends) (1.19.5)
+    Requirement already satisfied: python-dateutil>=2.7.3 in /usr/local/lib/python3.7/dist-packages (from pandas>=0.25->pytrends) (2.8.1)
+    Requirement already satisfied: pytz>=2017.2 in /usr/local/lib/python3.7/dist-packages (from pandas>=0.25->pytrends) (2018.9)
+    Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.7/dist-packages (from requests->pytrends) (2020.12.5)
+    Requirement already satisfied: idna<3,>=2.5 in /usr/local/lib/python3.7/dist-packages (from requests->pytrends) (2.10)
+    Requirement already satisfied: urllib3!=1.25.0,!=1.25.1,<1.26,>=1.21.1 in /usr/local/lib/python3.7/dist-packages (from requests->pytrends) (1.24.3)
+    Requirement already satisfied: chardet<4,>=3.0.2 in /usr/local/lib/python3.7/dist-packages (from requests->pytrends) (3.0.4)
+    Requirement already satisfied: six>=1.5 in /usr/local/lib/python3.7/dist-packages (from python-dateutil>=2.7.3->pandas>=0.25->pytrends) (1.15.0)
+    Installing collected packages: pytrends
+    Successfully installed pytrends-4.7.3
+
+
 Next, lets create our master table conntaining all of our crypto-currencies. For later use, we will format the date as a python datetime object and add a date key column.
 
 
@@ -38,9 +57,17 @@ except:
 files.remove('.git')
 files.sort() 
 sqlName = files.pop() #get sql db file name
-
+if sqlName == 'crypto_data.sql-journal':
+  sqlName = files.pop()
 #Connect to sql database
 conn = sqlite3.connect(f"{path}/{sqlName}")
+
+#Empty Database for tutorial if there are already tables
+cur = conn.cursor()
+tables = [x[0] for x in cur.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+for table in tables:
+  cur.execute(f"DROP TABLE {table}")
+cur.close()
 
 #Read Tables into sql
 for file in files:
@@ -53,6 +80,14 @@ for file in files:
 frame = pd.read_sql("SELECT * FROM Master",conn)
 frame.head()
 ```
+
+    Cloning into 'data_host'...
+    remote: Enumerating objects: 28, done.[K
+    remote: Counting objects: 100% (28/28), done.[K
+    remote: Compressing objects: 100% (27/27), done.[K
+    remote: Total 28 (delta 1), reused 24 (delta 0), pack-reused 0[K
+    Unpacking objects: 100% (28/28), done.
+
 
 
 
@@ -85,7 +120,6 @@ frame.head()
       <th>Volume</th>
       <th>Marketcap</th>
       <th>DateKey</th>
-      <th>Change</th>
     </tr>
   </thead>
   <tbody>
@@ -101,7 +135,6 @@ frame.head()
       <td>0.000000e+00</td>
       <td>8.912813e+07</td>
       <td>20201005</td>
-      <td>None</td>
     </tr>
     <tr>
       <th>1</th>
@@ -115,7 +148,6 @@ frame.head()
       <td>5.830915e+05</td>
       <td>7.101144e+07</td>
       <td>20201006</td>
-      <td>None</td>
     </tr>
     <tr>
       <th>2</th>
@@ -129,7 +161,6 @@ frame.head()
       <td>6.828342e+05</td>
       <td>6.713004e+07</td>
       <td>20201007</td>
-      <td>None</td>
     </tr>
     <tr>
       <th>3</th>
@@ -143,7 +174,6 @@ frame.head()
       <td>1.658817e+06</td>
       <td>2.202651e+08</td>
       <td>20201008</td>
-      <td>None</td>
     </tr>
     <tr>
       <th>4</th>
@@ -157,7 +187,6 @@ frame.head()
       <td>8.155377e+05</td>
       <td>2.356322e+08</td>
       <td>20201009</td>
-      <td>None</td>
     </tr>
   </tbody>
 </table>
@@ -165,7 +194,7 @@ frame.head()
 
 
 
-Now, lets scrape our data using the unique names from our SQL Database, and query Google Trends with these names. By grabbing the unique names and merging the dataframes we can create one dataframe almost ready to merge with our SQL dataframe. We will modify the data that pytrends gives us by creating a startDate and endDate column along with start and end date key columns. The two key columns will make it easier to locate dates within the week of search results.
+Now, lets scrape our data using the unique names from our SQL Database, and query Google Trends with these names. By grabbing the unique names and merging the dataframes we can create one dataframe which is almost ready to merge with our SQL dataframe. We will modify the data that pytrends gives us by creating a startDate and endDate column along with start and end date key columns. The two key columns will make it easier to locate dates within the week of search results.
 
 
 ```python
@@ -191,6 +220,10 @@ trends_df.index = range(0,len(trends_df))
 trends_df.to_sql("Trends",conn)
 trends_df.head()
 ```
+
+    /usr/local/lib/python3.7/dist-packages/pandas/core/generic.py:2615: UserWarning: The spaces in these column names will not be changed. In pandas versions < 0.14, spaces were converted to underscores.
+      method=method,
+
 
 
 
@@ -247,18 +280,18 @@ trends_df.head()
       <th>0</th>
       <td>0</td>
       <td>0</td>
-      <td>2</td>
+      <td>3</td>
       <td>0</td>
       <td>0</td>
       <td>4</td>
       <td>0</td>
       <td>0</td>
-      <td>6</td>
+      <td>7</td>
       <td>1</td>
       <td>1</td>
       <td>0</td>
       <td>0</td>
-      <td>19</td>
+      <td>20</td>
       <td>1</td>
       <td>4</td>
       <td>6</td>
@@ -280,18 +313,18 @@ trends_df.head()
       <td>3</td>
       <td>0</td>
       <td>0</td>
-      <td>3</td>
-      <td>0</td>
-      <td>0</td>
-      <td>6</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>20</td>
-      <td>0</td>
       <td>4</td>
-      <td>6</td>
+      <td>0</td>
+      <td>0</td>
+      <td>7</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>19</td>
+      <td>1</td>
+      <td>4</td>
+      <td>7</td>
       <td>3</td>
       <td>39</td>
       <td>0</td>
@@ -310,20 +343,20 @@ trends_df.head()
       <td>3</td>
       <td>0</td>
       <td>0</td>
-      <td>3</td>
+      <td>4</td>
       <td>0</td>
       <td>0</td>
-      <td>6</td>
+      <td>7</td>
       <td>1</td>
       <td>1</td>
       <td>0</td>
       <td>0</td>
       <td>21</td>
-      <td>0</td>
+      <td>1</td>
       <td>4</td>
-      <td>7</td>
+      <td>6</td>
       <td>3</td>
-      <td>39</td>
+      <td>38</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -340,20 +373,20 @@ trends_df.head()
       <td>4</td>
       <td>0</td>
       <td>0</td>
-      <td>3</td>
+      <td>4</td>
       <td>0</td>
       <td>0</td>
-      <td>6</td>
+      <td>7</td>
       <td>2</td>
       <td>1</td>
       <td>1</td>
       <td>0</td>
       <td>21</td>
-      <td>0</td>
+      <td>1</td>
       <td>4</td>
       <td>6</td>
       <td>3</td>
-      <td>35</td>
+      <td>34</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -374,16 +407,16 @@ trends_df.head()
       <td>0</td>
       <td>0</td>
       <td>7</td>
+      <td>2</td>
       <td>1</td>
       <td>1</td>
       <td>0</td>
-      <td>0</td>
-      <td>23</td>
+      <td>22</td>
       <td>0</td>
       <td>4</td>
       <td>6</td>
-      <td>3</td>
-      <td>38</td>
+      <td>2</td>
+      <td>40</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -575,74 +608,74 @@ newTables[0].head()
       <td>20131231</td>
       <td>1156.140015</td>
       <td>65.526001</td>
-      <td>134.444</td>
-      <td>754.01001</td>
-      <td>566740.080972</td>
+      <td>134.444000</td>
+      <td>754.010010</td>
+      <td>5.667401e+05</td>
       <td>3.066581e+09</td>
     </tr>
     <tr>
       <th>1</th>
       <td>2013</td>
-      <td>Bitcoin</td>
-      <td>BTC</td>
-      <td>2013-04-29</td>
+      <td>Dogecoin</td>
+      <td>DOGE</td>
+      <td>2013-12-16</td>
       <td>2013-12-31</td>
-      <td>20130429</td>
+      <td>20131216</td>
       <td>20131231</td>
-      <td>1156.140015</td>
-      <td>65.526001</td>
-      <td>134.444</td>
-      <td>754.01001</td>
-      <td>566740.080972</td>
-      <td>3.066581e+09</td>
+      <td>0.001520</td>
+      <td>0.000116</td>
+      <td>0.000299</td>
+      <td>0.000422</td>
+      <td>1.081273e+05</td>
+      <td>6.444175e+06</td>
     </tr>
     <tr>
       <th>2</th>
       <td>2013</td>
-      <td>Bitcoin</td>
-      <td>BTC</td>
+      <td>Litecoin</td>
+      <td>LTC</td>
       <td>2013-04-29</td>
       <td>2013-12-31</td>
       <td>20130429</td>
       <td>20131231</td>
-      <td>1156.140015</td>
-      <td>65.526001</td>
-      <td>134.444</td>
-      <td>754.01001</td>
-      <td>566740.080972</td>
-      <td>3.066581e+09</td>
+      <td>53.146999</td>
+      <td>1.618620</td>
+      <td>4.366760</td>
+      <td>24.347000</td>
+      <td>2.971116e+05</td>
+      <td>1.504182e+08</td>
     </tr>
     <tr>
       <th>3</th>
       <td>2013</td>
-      <td>Bitcoin</td>
-      <td>BTC</td>
-      <td>2013-04-29</td>
+      <td>XRP</td>
+      <td>XRP</td>
+      <td>2013-08-05</td>
       <td>2013-12-31</td>
-      <td>20130429</td>
+      <td>20130805</td>
       <td>20131231</td>
-      <td>1156.140015</td>
-      <td>65.526001</td>
-      <td>134.444</td>
-      <td>754.01001</td>
-      <td>566740.080972</td>
-      <td>3.066581e+09</td>
+      <td>0.061445</td>
+      <td>0.002875</td>
+      <td>0.005875</td>
+      <td>0.027330</td>
+      <td>3.254044e+03</td>
+      <td>1.064678e+08</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>2013</td>
+      <td>2014</td>
       <td>Bitcoin</td>
       <td>BTC</td>
-      <td>2013-04-29</td>
-      <td>2013-12-31</td>
-      <td>20130429</td>
-      <td>20131231</td>
-      <td>1156.140015</td>
-      <td>65.526001</td>
-      <td>134.444</td>
-      <td>754.01001</td>
-      <td>566740.080972</td>
-      <td>3.066581e+09</td>
+      <td>2014-01-01</td>
+      <td>2014-12-31</td>
+      <td>20140101</td>
+      <td>20141231</td>
+      <td>1017.119995</td>
+      <td>289.295990</td>
+      <td>754.969971</td>
+      <td>320.192993</td>
+      <td>2.509365e+07</td>
+      <td>6.782807e+09</td>
     </tr>
   </tbody>
 </table>
@@ -660,10 +693,6 @@ for idx in range(0,2):
   except:
     print(f"Table {tableVals[idx]}lyChange Already Exists")
 ```
-
-    Table YearlyChange Already Exists
-    Table MonthlyChange Already Exists
-
 
 Now that we have all of our tables, there is one more column we want to add. All of the numerical data provided is great, but it is not enough for a financial analysis of the crypto-currency's performances. We will need to compute the percent change for each day. The formula is as follows:
 
@@ -800,47 +829,161 @@ pd.read_sql("SELECT * FROM Master",conn).head()
 
 
 ## Exploratory Data Analysis
-Now that we have our data stored correctly, lets see what information it might tell us. To bein, we will try to see what type of function might predict the behavior of a crypto currency the best. To tackle this, we wil compute linear regressions on the data for lines and polynomials. To see how well the model predicts the future, we will start by fitting it to about 70% of our data. The other 30% of data will be used to test the prediction. We will use the sci-kit learn LinearRegression and Polynomial 
+Now that we have our data stored correctly, lets see what information it might tell us. To bein, we will try to see what type of function might predict the behavior of a crypto currency the best. To tackle this, we wil compute linear regressions on the data for lines and polynomials. Plotting each of these regressions helps to determine whether or not it describes the data well. For each of the regressions, we will first compute it for the entire market, then for one specific crypto currency. 
 
 
 ```python
-#Linear Regression On the whole market
+#Linear Regression On the whole market (Open and Close values with the start and end date keys)
 cur = conn.cursor()
-
-model = Pipeline([('poly',pf(degree=4)), ('linear',LinearRegression(fit_intercept=False))])
-cur.close()
-```
-
-
-```python
-#Multiple degree regression...
-
-cur = conn.cursor()
-coins = ['Bitcoin'] #[x[0] for x in cur.execute(f"SELECT DISTINCT Name FROM {table}").fetchall()]
-coinRegs = {}
-for coin in coins:
-  X = [[1.,float(x[0].replace('-',''))] for x in cur.execute(f"SELECT {xVal} FROM {table} WHERE Name = '{coin}'").fetchall()]
-  y = [float(x[0]) for x in cur.execute(f"SELECT Close FROM {table} WHERE Name = '{coin}'").fetchall()]
-  model.fit(X,y)
-  coinRegs[coin] = model.fit(X,y)
-  print(f"{coin}: {coinRegs[coin].named_steps['linear'].coef_}")
+#Build lists of data
+X = [[1., float(x[0])] for x in cur.execute("SELECT StartDateKey FROM MonthlyChange").fetchall()]
+X = X + [[1., float(x[0])] for x in cur.execute("SELECT EndDateKey FROM MonthlyChange").fetchall()]
+y = [float(x[0]) for x in cur.execute("SELECT Open FROM MonthlyChange").fetchall()]
+y = y + [float(x[0]) for x in cur.execute("SELECT Close FROM MonthlyChange").fetchall()]
 cur.close()
 
+marketReg = LinearRegression(fit_intercept=True).fit(X,y)
+print(f"Whole Market Regression: y = ({marketReg.coef_[0]})x0 + ({marketReg.coef_[1]})x1")
+
+#Show predictions for the last 10 months
+#create a plotable data table
+mthChange = pd.read_sql("SELECT Name, Open as Val, StartDateKey as Date FROM MonthlyChange",conn)
+mthChange = mthChange.append(pd.read_sql("SELECT Name, Close as Val, EndDateKey as Date FROM MonthlyChange",conn))
+mthChange = mthChange.sort_values('Date', ignore_index=True)
+mthChange['pred'] = mthChange['Date'].apply(lambda c: marketReg.predict([[1.,float(c)]])[0])
+dates = mthChange['Date'].unique().tolist()
+mthChange['idx'] = mthChange['Date'].apply(lambda c: dates.index(c))
+
+ax = mthChange.plot(x='idx',y='Val',kind='scatter',c='b')
+mthChange.plot(x='idx',y='pred',ax=ax,c='r')
 ```
+
+    Whole Market Regression: y = (0.0)x0 + (0.025125605576467126)x1
+
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x7fdba3c52550>
+
+
+
+
+![png](320_FINAL_files/320_FINAL_18_2.png)
+
+
+It seems that the linear regression for the entire market does not describe all of the data well. This regression would tell us what the return on investment of evenly diversifying your portfolio into all coins would be. However, the regression does not seem to be a satisfactory description for the market.
+
+Next, lets try using a linear regression on one coin. We will use ethereum, since it is popular and growing.
 
 
 ```python
-btc = coinRegs['Bitcoin']
-df = pd.read_sql("SELECT * FROM MonthlyChange WHERE Name = 'Bitcoin'", conn)
-df['pred'] = df['Month'].apply(lambda c: btc.predict([[1.,float(c.replace('-',''))]])[0])
-df.head()
+coin = 'Ethereum'
+eTbl = pd.read_sql(f"SELECT DateKey as Date, Open as Val FROM Master WHERE Name = '{coin}'",conn)
+dates = eTbl['Date'].unique().tolist()
+eTbl['idx'] = eTbl.index
 
-ax = df.plot(x='Month',y='Close',kind='scatter')
-df.plot(x='Month',y='pred',ax=ax)
-print(df['Close'].tolist())
+#Compute Regression
+X = [[1., float(x)] for x in eTbl['idx'].tolist()]
+y = eTbl['Val'].tolist()
+eReg = LinearRegression(fit_intercept=True).fit(X,y)
+
+#Plot Data
+eTbl['pred'] = eTbl['idx'].apply(lambda c: eReg.predict([[1.,float(c)]])[0])
+ax = eTbl.plot(x='idx',y='Val',kind='scatter',c='b')
+eTbl.plot(x='idx',y='pred',c='r',ax=ax)
 ```
 
-Now, lets try and plot the High data for one crypto currency versus the trends data, and see if there is a relationship. First we need to conver them both to months, and collect their data to plot.
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x7fdba3054cd0>
+
+
+
+
+![png](320_FINAL_files/320_FINAL_20_1.png)
+
+
+This regression certainly seems to follow the trend of the data better than the entire market's, but it still does not capture the fluctuation in value. To attempt to see this, we will evaluate a multiple degree regression with degrees 1 to 5.
+
+
+```python
+#Multiple degree regression
+mdTbl = pd.read_sql("SELECT Month as Date, Open as Val FROM MonthlyChange",conn)
+dates = mdTbl['Date'].unique().tolist()
+mdTbl['idx'] = mdTbl['Date'].apply(lambda c: dates.index(c))
+
+X = [[1., float(x)] for x in mdTbl['idx'].tolist()]
+y = mdTbl['Val'].tolist()
+
+#Compute Regressions
+for deg in range(1,6):
+  model = Pipeline([('poly',pf(degree=deg)), ('lin',LinearRegression(fit_intercept=True))])
+  reg = model.fit(X,y)
+  mdTbl[f"{deg}-degree"] = mdTbl['idx'].apply(lambda c: reg.predict([[1.,float(c)]])[0])
+  
+#Create plot
+ax = mdTbl[mdTbl.index % 2 == 0].plot(x='idx',y='Val',kind='scatter',c='b')
+colors = ['r','g','orange','purple']
+for idx in range(1,5):
+  ax = mdTbl.plot(x='idx',y=f'{idx}-degree',c=colors[idx-1],ax=ax)
+
+mdTbl.plot(x='idx',y='5-degree',c='y',ax=ax)
+```
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x7fdba4312f50>
+
+
+
+
+![png](320_FINAL_files/320_FINAL_22_1.png)
+
+
+After plotting the multiple degree regressions along with the first degree regression, it is clear that adding more complexity to the equation cannot handle the fluctuation in value for the entire market. In general, using a linear regression is not a good way to model the state of a market. The first degree regression is the least expensive and just as accurate as each higher degree regression. If there were a case where this equation were helpful, the single degree regression would be the best to use.
+
+Now, lets see if a multiple degree regression works to describe the behavior of a single coin. Again, in this example, we will use Ethereum.
+
+
+```python
+coin = 'Ethereum'
+#Gather data
+eTbl = eTbl.rename(columns={'pred':'1-degree'})
+dates = eTbl['Date'].unique().tolist()
+X = [[1., float(x)] for x in eTbl['idx'].tolist()]
+y = eTbl['Val'].tolist()
+
+#Compute regressions
+for deg in range(2,6):
+  model = Pipeline([('poly',pf(degree=deg)), ('lin',LinearRegression(fit_intercept=True))])
+  reg = model.fit(X,y)
+  eTbl[f"{deg}-degree"] = eTbl['idx'].apply(lambda c: reg.predict([[1.,float(c)]])[0])
+
+#Plot data
+ax = eTbl.plot(x='idx',y='Val',kind='scatter',c='b')
+for idx in range(1,5):
+  ax = eTbl.plot(x='idx',y=f"{idx}-degree",c=colors[idx-1],ax=ax,)
+eTbl.plot(x='idx',y='5-degree',c='y',ax=ax)
+```
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x7fdbbaf73410>
+
+
+
+
+![png](320_FINAL_files/320_FINAL_24_1.png)
+
+
+In this plot, it seems that the 3rd - 5th degree regressions could do a good job at modeling the behavior of the single coin. However, we want to try and find a model that will be able to predict the future behavior of each coin. We will test this in a later section.
+
+
+Many people speculate that crypto-currency fluctuates based on it's popularity at a given time. To explore these claims, lets try and plot the High data for one crypto currency versus the trends data, and see if there is a relationship. First we need to conver them both to months, and collect their data to plot.
 
 
 ```python
@@ -888,7 +1031,7 @@ plt.show()
 
 
 
-![png](320_FINAL_files/320_FINAL_22_1.png)
+![png](320_FINAL_files/320_FINAL_26_1.png)
 
 
 As we can see, most values in the trends data is ranging 0-100, meaning when placed next to data in the thousands, we can not see any relationship, because the trends data is so small. The solution of this is to normalize both datasets by dividing each value in each dataset by their datasets maximum value. That is what we do below.
@@ -918,7 +1061,7 @@ plt.show()
 ```
 
 
-![png](320_FINAL_files/320_FINAL_24_0.png)
+![png](320_FINAL_files/320_FINAL_28_0.png)
 
 
 As we can see now, there does seem to be some trend in market value and Google search trends. It appears that when the trends data spikes, a spike in market high value is imminent. This indicates that Google's trends data might just be a good indicator of stock price value, but one example is not enough to say for sure.
@@ -1001,14 +1144,14 @@ for ind, v in enumerate(train_trends_input):
 
 # training using Bitcoin data
 regressor = LinearRegression()
-regressor.fit([norm_X], [norm_y]) # fit the model for training data
+regressor = regressor.fit([norm_X], [norm_y]) # fit the model for training data
 
 # predict the target given the trends data
 prediction_training_targets = regressor.predict([norm_X])
 
 # Compute Accuracy scores
 self_accuracy = regressor.score([norm_X], [norm_y])
-print("Accuracy for training data (self accuracy):", self_accuracy)
+print(f"Accuracy for training data: {self_accuracy}")
 
 # Use model to predict on test data
 prediction_test_targets = regressor.predict([norm_X_test])
@@ -1024,18 +1167,92 @@ plt.show()
 
 ```
 
-    Accuracy for training data (self accuracy): nan
-
-
     /usr/local/lib/python3.7/dist-packages/sklearn/base.py:434: FutureWarning: The default value of multioutput (not exposed in score method) will change from 'variance_weighted' to 'uniform_average' in 0.23 to keep consistent with 'metrics.r2_score'. To specify the default value manually and avoid the warning, please either call 'metrics.r2_score' directly or make a custom scorer with 'metrics.make_scorer' (the built-in scorer 'r2' uses multioutput='uniform_average').
       "multioutput='uniform_average').", FutureWarning)
     /usr/local/lib/python3.7/dist-packages/sklearn/metrics/_regression.py:582: UndefinedMetricWarning: R^2 score is not well-defined with less than two samples.
       warnings.warn(msg, UndefinedMetricWarning)
 
 
+    Accuracy for training data: nan
 
-![png](320_FINAL_files/320_FINAL_27_2.png)
+
+
+![png](320_FINAL_files/320_FINAL_31_2.png)
+
+
+Finally, we will test the ability of a multiple degree regression to predict the future behavior of a crypto currency. To accomplish this, we will take the beginning 70% of a coin's High data and fit a regression to this. Then we will test the regression on the last 30% of the High data and evaluate how well it fits.
+
+
+```python
+#Linear Regression Accuracy testing
+coin = 'Cardano'
+cTbl = pd.read_sql(f"SELECT DateKey as Date, High FROM Master WHERE Name='{coin}'",conn)
+cTbl['idx'] = cTbl.index
+cutOff = int(np.floor(.7 * len(cTbl)))
+#Build test set
+X = [[1., float(x)] for x in cTbl['idx'].tolist()][0:cutOff]
+y = cTbl['High'].tolist()[0:cutOff]
+regs = {}
+for deg in range(1,6):
+  model = Pipeline([('poly',pf(degree=deg)),('lin',LinearRegression())])
+  regs[deg] = model.fit(X,y)
+
+#Test the fit and plot
+X_test = [[1., float(x)] for x in cTbl['idx'].tolist()][cutOff:]
+y_test = cTbl['High'].tolist()[cutOff:]
+
+colors.append('black')
+trainData = cTbl[:cutOff]
+testData = cTbl[cutOff:]
+plt.plot(trainData['idx'].tolist(), trainData['High'].tolist(),c='g')
+plt.plot(testData['idx'].tolist(), testData['High'].tolist(), c='r')
+for deg in regs.keys():
+  key = f"{deg}-degree"
+  data = cTbl['idx'].apply(lambda c: regs[deg].predict([[1.,float(c)]])[0])
+  cTbl[key] = data
+  #Plot Prediction
+  plt.plot(cTbl['idx'].tolist(), data, '--', c=colors[deg-1])
+
+  #Score test data
+  score = regs[deg].score(X_test, y_test)
+  print(f"{key} regression accuracy (R^2 value): {score}")
+
+plt.title("Cardano Regression Predictions")
+plt.ylabel("High")
+plt.xlabel("Index Value")
+plt.legend(['Train','Test'] + list(regs.keys()))
+
+#Plot the best Regression Model
+plt.figure()
+plt.plot(cTbl['idx'], cTbl['High'], c='b')
+plt.plot(cTbl['idx'], cTbl['3-degree'], c='r')
+plt.title("Cardano 3rd Degree Regression")
+plt.legend(['High','Prediction'])
+```
+
+    1-degree regression accuracy (R^2 value): -1.4990953420121054
+    2-degree regression accuracy (R^2 value): -0.21339431193948122
+    3-degree regression accuracy (R^2 value): -4.631884966864126
+    4-degree regression accuracy (R^2 value): -200.97313043643123
+    5-degree regression accuracy (R^2 value): -815.9502469582515
+
+
+
+
+
+    <matplotlib.legend.Legend at 0x7fdba4280490>
+
+
+
+
+![png](320_FINAL_files/320_FINAL_33_2.png)
+
+
+
+![png](320_FINAL_files/320_FINAL_33_3.png)
 
 
 ## Final Results/Findings
-What we have found from our Regression is a model that appears to predict a higher value than what is typically the market output. That being said, it does tend to increase prior to the market value actually increasing, which could be a useful model for making money. That being said, we could also take this model further, by training it on more data, and potentially decreasing the complexity, or hyperfocusing on the volatile sections, however for this case our model is good. It does seem though, that there is one occurence where our model predicts a spike that does not occur in the market data. So, there are flaws, but certainly hope.
+What we have found from our Trends Regression is a model that appears to predict a higher value than what is typically the market output. That being said, it does tend to increase prior to the market value actually increasing, which could be a useful model for making money. That being said, we could also take this model further, by training it on more data, and potentially decreasing the complexity, or hyperfocusing on the volatile sections, however for this case our model is good. It does seem though, that there is one occurence where our model predicts a spike that does not occur in the market data. So, there are flaws, but certainly hope.
+
+On the other hand, for the basic linear regression model, relating value to time, there is no good representation of the data. In our example, the 3rd degree regression seems to describe the fluctuations in price generally, but the model has a R^2 score of less than zero. This means that the regression is less accurate than a horizontal line. So, if you were to base your investments off this model, you would be better off just keeping your money in the bank. Because of this, a regression relating time and value is not a good predictor for market behaviors.
